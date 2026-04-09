@@ -20,9 +20,12 @@ def get_logger(name: str, log_dir: Path | None = None) -> logging.Logger:
     logger.addHandler(stream_handler)
 
     if log_dir is not None:
-        log_dir.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(log_dir / "app.log", encoding="utf-8")
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+            file_handler = logging.FileHandler(log_dir / "app.log", encoding="utf-8")
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+        except OSError as e:
+            logger.warning("File logging disabled: %s", e)
 
     return logger

@@ -5,6 +5,7 @@ import os
 from dataclasses import dataclass
 from typing import Iterator
 from urllib import error, request
+import warnings
 
 
 @dataclass
@@ -15,6 +16,8 @@ class LLMResponse:
 class BaseLLM:
     backend_name: str = "base"
     model: str = "unknown"
+    last_backend_used: str = "unknown"
+    last_error: str = ""
 
     def generate(self, prompt: str, temperature: float = 0.2) -> LLMResponse:
         raise NotImplementedError
@@ -83,6 +86,8 @@ class DashScopeLLM(BaseLLM):
         except Exception as e:
             raise RuntimeError(f"Unexpected DashScope response shape: {str(data)[:500]}") from e
 
+        self.last_backend_used = self.backend_name
+        self.last_error = ""
         return LLMResponse(content=content or "")
 
     def generate_stream(self, prompt: str, temperature: float = 0.2) -> Iterator[str]:
@@ -139,6 +144,8 @@ class MockLLM(BaseLLM):
     model = "mock-react"
 
     def generate(self, prompt: str, temperature: float = 0.2) -> LLMResponse:
+        self.last_backend_used = self.backend_name
+        self.last_error = ""
         lowered = prompt.lower()
         if "Action:" in prompt and "Observation:" in prompt:
             return LLMResponse(content="Final Answer: 基于检索证据，建议先检查滚刷和滤网，再执行深度清洁模式。")
@@ -173,11 +180,51 @@ class MockLLM(BaseLLM):
         return LLMResponse(content="Final Answer: 我可以帮你排查扫地机器人问题，请告诉我更具体的现象。")
 
 
+class FallbackLLM(BaseLLM):
+    backend_name = "dashscope-compatible+mock-fallback"
+
+    def __init__(self, primary: BaseLLM, fallback: BaseLLM) -> None:
+        self.primary = primary
+        self.fallback = fallback
+        self.model = getattr(primary, "model", "unknown")
+        self._warned = False
+        self.last_backend_used = "unknown"
+        self.last_error = ""
+
+    def _warn_once(self, reason: Exception) -> None:
+        if self._warned:
+            return
+        warnings.warn(f"Primary LLM unavailable, switched to mock fallback: {reason}")
+        self._warned = True
+
+    def generate(self, prompt: str, temperature: float = 0.2) -> LLMResponse:
+        try:
+            out = self.primary.generate(prompt, temperature=temperature)
+            self.last_backend_used = getattr(self.primary, "last_backend_used", self.primary.backend_name)
+            self.last_error = ""
+            return out
+        except Exception as e:
+            self._warn_once(e)
+            out = self.fallback.generate(prompt, temperature=temperature)
+            self.last_backend_used = getattr(self.fallback, "last_backend_used", self.fallback.backend_name)
+            self.last_error = str(e)
+            return out
+
+    def generate_stream(self, prompt: str, temperature: float = 0.2) -> Iterator[str]:
+        try:
+            yield from self.primary.generate_stream(prompt, temperature=temperature)
+        except Exception as e:
+            self._warn_once(e)
+            yield from self.fallback.generate_stream(prompt, temperature=temperature)
+
+
 def build_llm(allow_mock_fallback: bool = True) -> BaseLLM:
     has_key = bool(os.getenv("DASHSCOPE_API_KEY", "").strip() or os.getenv("OPENAI_API_KEY", "").strip())
 
     if has_key:
         llm = DashScopeLLM()
+        if allow_mock_fallback:
+            return FallbackLLM(primary=llm, fallback=MockLLM())
         return llm
 
     if allow_mock_fallback:

@@ -52,6 +52,11 @@ def main() -> None:
 
         result = agent.run(query)
         print(f"\nAgent: {result.answer}")
+        used_backend = getattr(agent.llm, "last_backend_used", getattr(agent.llm, "backend_name", "unknown"))
+        last_error = getattr(agent.llm, "last_error", "")
+        print(f"[LLM_USED] {used_backend}")
+        if last_error:
+            print(f"[LLM_FALLBACK_REASON] {last_error}")
 
 
 if __name__ == "__main__":
