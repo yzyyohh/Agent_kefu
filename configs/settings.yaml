@@ -1,0 +1,22 @@
+﻿project:
+  name: "rag-react-robot-agent"
+  version: "0.1.0"
+
+paths:
+  data_dir: "data"
+  index_dir: "storage/index"
+  log_dir: "storage/logs"
+
+models:
+  chat_model_name: "qwen3-max"
+  embedding_model_name: "text-embedding-v4"
+
+rag:
+  chunk_size: 350
+  chunk_overlap: 80
+  top_k: 4
+  min_score: 0.05
+
+agent:
+  max_steps: 4
+  temperature: 0.2

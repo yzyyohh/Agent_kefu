@@ -1,0 +1,11 @@
+fastapi==0.115.12
+uvicorn==0.34.1
+pydantic==2.11.3
+PyYAML==6.0.2
+python-dotenv==1.1.0
+numpy==2.2.4
+scikit-learn==1.6.1
+pypdf==5.4.0
+openai==1.75.0
+pytest==8.3.5
+streamlit==1.44.1
