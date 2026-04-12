@@ -132,3 +132,12 @@ streamlit run frontend/streamlit_app.py --server.port 8502
 1. 将 TF-IDF 检索替换为 `text-embedding-v4` + 向量数据库（FAISS/Milvus）
 2. 增加设备状态工具（电量、错误码、地图状态）
 3. 增加评测集与自动化回归（检索命中率、答案质量）
+
+## 8. 界面展示
+
+![界面展示 1](./image1.png)
+
+![界面展示 2](./image2.png)
+
+![界面展示 3](./image3.png)
+
